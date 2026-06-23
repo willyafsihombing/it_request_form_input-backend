@@ -65,7 +65,7 @@ func (h *RequestHandler) Create(c *gin.Context) {
 		return
 	}
 
-	// Selalu generate dari sequence — abaikan formNumber dari frontend
+	//sequence form number
 	maxRetry := 5
 	for i := 0; i < maxRetry; i++ {
 		seq, err := utils.GenerateFormNumber(h.Repo.DB)
@@ -75,20 +75,18 @@ func (h *RequestHandler) Create(c *gin.Context) {
 		}
 		body.FormNumber = utils.BuildFormNumber(seq)
 
-		// Cek duplikat setelah generate
 		exists, err := h.Repo.ExistsByFormNumber(body.FormNumber)
 		if err != nil {
 			utils.InternalError(c, "Internal server error")
 			return
 		}
 		if !exists {
-			break // ← unik, lanjut simpan
+			break
 		}
 		if i == maxRetry-1 {
 			utils.InternalError(c, "Gagal generate form number unik")
 			return
 		}
-		// duplikat → loop ulang, sequence naik otomatis
 	}
 
 	body.ID = uuid.New().String()
@@ -115,6 +113,7 @@ func (h *RequestHandler) GetByID(c *gin.Context) {
 	req, err := h.Repo.FindByID(id)
 	if err != nil {
 		utils.InternalError(c, "Internal Server Error")
+		return
 	}
 
 	if req == nil {
