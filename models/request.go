@@ -5,6 +5,7 @@ import "time"
 type Request struct {
 	ID               string     `json:"id"`
 	FormNumber       string     `json:"formNumber"`
+	RequestTitle     string     `json:"requestTitle"`
 	EffectiveDate    string     `json:"effectiveDate"`
 	ReqCompany       string     `json:"reqCompany"`
 	ReqName          string     `json:"reqName"`
@@ -75,6 +76,7 @@ type RequestListItem struct {
 	ID             string    `json:"id"`
 	FormNumber     string    `json:"formNumber"`
 	EffectiveDate  string    `json:"effectiveDate"`
+	RequestTitle   string    `json:"RequestTitle"`
 	ReqName        string    `json:"reqName"`
 	RecDept        string    `json:"recDept"`
 	RecLocation    string    `json:"recLocation"`

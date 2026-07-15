@@ -7,6 +7,7 @@ import (
 	"it-request-backend/utils"
 	"math"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -65,6 +66,16 @@ func (h *RequestHandler) Create(c *gin.Context) {
 		return
 	}
 
+	body.RequestTitle = strings.TrimSpace(body.RequestTitle)
+	if body.RequestTitle == "" {
+		utils.BadRequest(c, "Judul request wajib diisi")
+		return
+	}
+	if len(body.RequestTitle) > 100 {
+		utils.BadRequest(c, "Judul request maksimal 50 karakter")
+		return
+	}
+
 	//sequence form number
 	maxRetry := 5
 	for i := 0; i < maxRetry; i++ {
@@ -73,7 +84,7 @@ func (h *RequestHandler) Create(c *gin.Context) {
 			utils.InternalError(c, "Gagal generate form number")
 			return
 		}
-		body.FormNumber = utils.BuildFormNumber(seq)
+		body.FormNumber = utils.BuildFormNumber(seq, body.RequestTitle)
 
 		exists, err := h.Repo.ExistsByFormNumber(body.FormNumber)
 		if err != nil {
@@ -99,6 +110,7 @@ func (h *RequestHandler) Create(c *gin.Context) {
 	}
 
 	if err := h.Repo.Create(&body); err != nil {
+		fmt.Println("[Create Error]:", err.Error())
 		utils.InternalError(c, "Gagal menyimpan request")
 		return
 	}
@@ -148,7 +160,7 @@ func (h *RequestHandler) UpdateByID(c *gin.Context) {
 	}
 
 	allowedFields := []string{
-		"status", "priority", "itNotes", "assignedTo",
+		"requestTitle", "status", "priority", "itNotes", "assignedTo",
 		"techComment", "techAdd", "techAW", "techCR", "techEM", "techIP", "techEP",
 		"signITAdmin", "signMSDIMgr", "signMgr", "signHOO", "costCode", "justification", "additionalDesc",
 	}

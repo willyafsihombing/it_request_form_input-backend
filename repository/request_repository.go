@@ -37,11 +37,12 @@ func (r *RequestRepository) FindAll(status, priority, search string, page, limit
 	if search != "" {
 		searchCondition := fmt.Sprintf(`(
             form_number ILIKE $%d OR
+			request_title ILIKE $%d OR
             req_name    ILIKE $%d OR
             rec_personnel ILIKE $%d OR
             rec_dept    ILIKE $%d OR
             rec_location ILIKE $%d
-        )`, argIdx, argIdx+1, argIdx+2, argIdx+3, argIdx+4)
+        )`, argIdx, argIdx+1, argIdx+2, argIdx+3, argIdx+4, argIdx+5)
 		conditions = append(conditions, searchCondition)
 		searchVal := "%" + search + "%"
 		args = append(args, searchVal, searchVal, searchVal, searchVal, searchVal)
@@ -68,7 +69,7 @@ func (r *RequestRepository) FindAll(status, priority, search string, page, limit
 	args = append(args, limit, offset)
 	query := fmt.Sprintf(`
         SELECT
-            id, form_number, effective_date,
+            id, form_number, effective_date, request_title,
             req_name, rec_dept, rec_location,
             rec_personnel, rec_emp_id,
             hw_add, hw_change, hw_terminate,
@@ -93,7 +94,7 @@ func (r *RequestRepository) FindAll(status, priority, search string, page, limit
 	for rows.Next() {
 		var item models.RequestListItem
 		err := rows.Scan(
-			&item.ID, &item.FormNumber, &item.EffectiveDate,
+			&item.ID, &item.FormNumber, &item.EffectiveDate, &item.RequestTitle,
 			&item.ReqName, &item.RecDept, &item.RecLocation,
 			&item.RecPersonnel, &item.RecEmpId,
 			&item.HwAdd, &item.HwChange, &item.HwTerminate,
@@ -118,7 +119,7 @@ func (r *RequestRepository) FindByID(id string) (*models.Request, error) {
 
 	query := `
 		SELECT
-			id, form_number, effective_date,
+			id, form_number, effective_date, request_title,
 			req_company, req_name,
 			rec_company, rec_dept, rec_location, rec_personnel,
 			rec_emp_id, rec_title, rec_status,
@@ -140,7 +141,7 @@ func (r *RequestRepository) FindByID(id string) (*models.Request, error) {
 	`
 
 	err := r.DB.QueryRow(query, id).Scan(
-		&req.ID, &req.FormNumber, &req.EffectiveDate,
+		&req.ID, &req.FormNumber, &req.EffectiveDate, &req.RequestTitle,
 		&req.ReqCompany, &req.ReqName,
 		&req.RecCompany, &req.RecDept, &req.RecLocation, &req.RecPersonnel,
 		&req.RecEmpId, &req.RecTitle, &req.RecStatus,
@@ -187,7 +188,7 @@ func (r *RequestRepository) ExistsByID(id string) (bool, error) {
 func (r *RequestRepository) Create(req *models.Request) error {
 	query := `
         INSERT INTO requests (
-            id, form_number, effective_date,
+            id, form_number,request_title, effective_date,
             req_company, req_name, rec_company, rec_dept,
             rec_location, rec_personnel, rec_emp_id, rec_title, rec_status,
             sn_add, sn_change, sn_terminate, sn_lan, sn_vpn, sn_email,
@@ -208,12 +209,12 @@ func (r *RequestRepository) Create(req *models.Request) error {
             $31,$32,$33,$34,$35,$36,$37,$38,$39,$40,
             $41,$42,$43,$44,$45,$46,$47,$48,$49,$50,
             $51,$52,$53,$54,$55,$56,$57,$58,$59,$60,
-            $61,$62
+            $61,$62,$63
         )
     `
 	now := time.Now()
 	_, err := r.DB.Exec(query,
-		req.ID, req.FormNumber, req.EffectiveDate,
+		req.ID, req.FormNumber, req.RequestTitle, req.EffectiveDate,
 		req.ReqCompany, req.ReqName, req.RecCompany, req.RecDept,
 		req.RecLocation, req.RecPersonnel, req.RecEmpId, req.RecTitle, req.RecStatus,
 		req.SnAdd, req.SnChange, req.SnTerminate, req.SnLAN, req.SnVPN, req.SnEmail,
@@ -244,6 +245,7 @@ func (r *RequestRepository) ExistsByFormNumber(formNumber string) (bool, error) 
 // Update — PATCH allowed fields only
 func (r *RequestRepository) Update(id string, fields map[string]interface{}) error {
 	fieldMap := map[string]string{
+		"requestTitle":   "request_title",
 		"status":         "status",
 		"priority":       "priority",
 		"itNotes":        "it_notes",
