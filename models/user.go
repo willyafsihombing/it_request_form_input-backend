@@ -10,29 +10,31 @@ type User struct {
 	Role         string     `json:"role"`
 	Department   string     `json:"department"`
 	TitleUser    string     `json:"titleUser"`
-	PasswordHash string     `json:"-"` // ← tidak pernah dikirim ke client
+	EmployeeID   *string    `json:"employeeId"`
+	PasswordHash string     `json:"-"`
 	DeletedAt    *time.Time `json:"deletedAt,omitempty"`
 	CreatedAt    time.Time  `json:"createdAt"`
 	UpdatedAt    time.Time  `json:"updatedAt"`
 }
 
-// Response user — tanpa passwordHash
 type UserResponse struct {
-	ID         string     `json:"id"`
-	EmailAddrs string     `json:"emailAddrs"`
-	UserName   string     `json:"userName"`
-	FullName   string     `json:"fullName"`
-	Role       string     `json:"role"`
-	Department string     `json:"department"`
-	TitleUser  string     `json:"titleUser"`
-	DeletedAt  *time.Time `json:"deletedAt,omitempty"`
-	CreatedAt  time.Time  `json:"createdAt"`
-	UpdatedAt  time.Time  `json:"updatedAt"`
+	ID           string     `json:"id"`
+	EmailAddrs   string     `json:"emailAddrs"`
+	UserName     string     `json:"userName"`
+	FullName     string     `json:"fullName"`
+	Role         string     `json:"role"`
+	Department   string     `json:"department"`
+	TitleUser    string     `json:"titleUser"`
+	EmployeeID   *string    `json:"employeeId"`
+	Employee     *Employee  `json:"employee"`
+	passwordHash string     `json:"-"`
+	DeletedAt    *time.Time `json:"deletedAt,omitempty"`
+	CreatedAt    time.Time  `json:"createdAt"`
+	UpdatedAt    time.Time  `json:"updatedAt"`
 }
 
-// Login request body
 type LoginRequest struct {
-	Login    string `json:"login" binding:"required"` // email atau username
+	Login    string `json:"login" binding:"required"`
 	Password string `json:"password" binding:"required"`
 }
 

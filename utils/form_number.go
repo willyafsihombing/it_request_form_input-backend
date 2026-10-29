@@ -35,7 +35,7 @@ func sanitizeTitle(title string) string {
 }
 func BuildFormNumber(seq int, requestTitle string) string {
 	now := time.Now()
-	base := fmt.Sprintf("%d-ITR-Unggul-%02d%d", seq, int(now.Month()), now.Year())
+	base := fmt.Sprintf("%d-ITR-Unggul%02d%d", seq, int(now.Month()), now.Year())
 
 	title := sanitizeTitle(requestTitle)
 	if title == "" {

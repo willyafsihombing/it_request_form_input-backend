@@ -11,11 +11,38 @@ import (
 )
 
 type AuthHandler struct {
-	UserRepo *repository.UserRepository
+	UserRepo     *repository.UserRepository
+	EmployeeRepo *repository.EmployeeRepository
 }
 
-func NewAuthHandler(userRepo *repository.UserRepository) *AuthHandler {
-	return &AuthHandler{UserRepo: userRepo}
+func NewAuthHandler(userRepo *repository.UserRepository, employeeRepo *repository.EmployeeRepository) *AuthHandler {
+	return &AuthHandler{
+		UserRepo:     userRepo,
+		EmployeeRepo: employeeRepo,
+	}
+}
+
+func (h *AuthHandler) loadEmployee(user *models.User) (*models.Employee, error) {
+	if user.EmployeeID == nil || *user.EmployeeID == "" {
+		return nil, nil
+	}
+	return h.EmployeeRepo.FindByID(*user.EmployeeID)
+}
+
+func newUserResponse(u *models.User, emp *models.Employee) models.UserResponse {
+	return models.UserResponse{
+		ID:         u.ID,
+		EmailAddrs: u.EmailAddrs,
+		UserName:   u.UserName,
+		FullName:   u.FullName,
+		Role:       u.Role,
+		Department: u.Department,
+		TitleUser:  u.TitleUser,
+		EmployeeID: u.EmployeeID,
+		Employee:   emp,
+		CreatedAt:  u.CreatedAt,
+		UpdatedAt:  u.UpdatedAt,
+	}
 }
 
 // POST /api/auth/login
@@ -44,10 +71,26 @@ func (h *AuthHandler) Login(c *gin.Context) {
 		return
 	}
 
+	emp, err := h.loadEmployee(user)
+	if err != nil {
+		utils.InternalError(c, "Gagal memuat data karyawan")
+		return
+	}
+
+	if user.EmployeeID != nil && *user.EmployeeID != "" && (emp == nil || !emp.IsActive) {
+		utils.BadRequest(c, "Akun karyawan tidak aktif. Silakan hubungi HRD untuk mengaktifkan kembali akun Anda.")
+		return
+	}
+
+	employeeID, nik := "", ""
+	if emp != nil {
+		employeeID, nik = emp.ID, emp.NIK
+	}
+
 	// Generate token
 	token, err := utils.GenerateToken(
 		user.ID, user.EmailAddrs, user.UserName,
-		user.FullName, user.Role, user.Department, user.TitleUser,
+		user.FullName, user.Role, user.Department, user.TitleUser, employeeID, nik,
 	)
 	if err != nil {
 		utils.InternalError(c, "Gagal generate token")
@@ -55,22 +98,13 @@ func (h *AuthHandler) Login(c *gin.Context) {
 	}
 
 	// Set cookie
-	c.SetCookie("auth-token", token, 60*60*8, "/", "", false, true)
+	// c.SetCookie("auth-token", token, 60*5, "/", "", false, true)
+	c.SetCookie("auth-token", token, int(utils.TokenTTL().Seconds()), "/", "", false, true)
 
 	utils.OK(c, models.LoginResponse{
 		Success: true,
 		Token:   token,
-		User: models.UserResponse{
-			ID:         user.ID,
-			EmailAddrs: user.EmailAddrs,
-			UserName:   user.UserName,
-			FullName:   user.FullName,
-			Role:       user.Role,
-			Department: user.Department,
-			TitleUser:  user.TitleUser,
-			CreatedAt:  user.CreatedAt,
-			UpdatedAt:  user.UpdatedAt,
-		},
+		User:    newUserResponse(user, emp),
 	})
 }
 
@@ -96,15 +130,11 @@ func (h *AuthHandler) Me(c *gin.Context) {
 		return
 	}
 
-	utils.OK(c, gin.H{"user": models.UserResponse{
-		ID:         user.ID,
-		EmailAddrs: user.EmailAddrs,
-		UserName:   user.UserName,
-		FullName:   user.FullName,
-		Role:       user.Role,
-		Department: user.Department,
-		TitleUser:  user.TitleUser,
-		CreatedAt:  user.CreatedAt,
-		UpdatedAt:  user.UpdatedAt,
-	}})
+	emp, err := h.loadEmployee(user)
+	if err != nil {
+		utils.InternalError(c, "Gagal memuat data karyawan")
+		return
+	}
+
+	utils.OK(c, gin.H{"user": newUserResponse(user, emp)})
 }

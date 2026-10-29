@@ -20,11 +20,12 @@ func NewUserRepository(db *sql.DB) *UserRepository {
 func (r *UserRepository) FindByLogin(login string) (*models.User, error) {
 	var user models.User
 	var deletedAt sql.NullTime
+	var employeeID sql.NullString
 
 	query := `
         SELECT
             id, email_addrs, user_name, full_name,
-            role, department, title_user, password_hash,
+            role, department, title_user, password_hash,employee_id,
             deleted_at, created_at, updated_at
         FROM users
         WHERE (email_addrs = $1 OR user_name = $1)
@@ -34,7 +35,7 @@ func (r *UserRepository) FindByLogin(login string) (*models.User, error) {
 
 	err := r.DB.QueryRow(query, login).Scan(
 		&user.ID, &user.EmailAddrs, &user.UserName, &user.FullName,
-		&user.Role, &user.Department, &user.TitleUser, &user.PasswordHash,
+		&user.Role, &user.Department, &user.TitleUser, &user.PasswordHash, &employeeID,
 		&deletedAt, &user.CreatedAt, &user.UpdatedAt,
 	)
 	if err == sql.ErrNoRows {
@@ -42,6 +43,10 @@ func (r *UserRepository) FindByLogin(login string) (*models.User, error) {
 	}
 	if err != nil {
 		return nil, err
+	}
+
+	if employeeID.Valid {
+		user.EmployeeID = &employeeID.String
 	}
 
 	if deletedAt.Valid {
@@ -55,11 +60,12 @@ func (r *UserRepository) FindByLogin(login string) (*models.User, error) {
 func (r *UserRepository) FindByID(id string) (*models.User, error) {
 	var user models.User
 	var deletedAt sql.NullTime
+	var employeeID sql.NullString
 
 	query := `
         SELECT
             id, email_addrs, user_name, full_name,
-            role, department, title_user, password_hash,
+            role, department, title_user, password_hash,employee_id,
             deleted_at, created_at, updated_at
         FROM users
         WHERE id = $1 AND deleted_at IS NULL
@@ -67,7 +73,7 @@ func (r *UserRepository) FindByID(id string) (*models.User, error) {
 
 	err := r.DB.QueryRow(query, id).Scan(
 		&user.ID, &user.EmailAddrs, &user.UserName, &user.FullName,
-		&user.Role, &user.Department, &user.TitleUser, &user.PasswordHash,
+		&user.Role, &user.Department, &user.TitleUser, &user.PasswordHash, &employeeID,
 		&deletedAt, &user.CreatedAt, &user.UpdatedAt,
 	)
 	if err == sql.ErrNoRows {
@@ -75,6 +81,10 @@ func (r *UserRepository) FindByID(id string) (*models.User, error) {
 	}
 	if err != nil {
 		return nil, err
+	}
+
+	if employeeID.Valid {
+		user.EmployeeID = &employeeID.String
 	}
 
 	if deletedAt.Valid {
@@ -87,6 +97,10 @@ func (r *UserRepository) FindByID(id string) (*models.User, error) {
 // Create user baru
 func (r *UserRepository) Create(user *models.User) error {
 	now := time.Now()
+	var employeeID interface{}
+	if user.EmployeeID != nil && *user.EmployeeID != "" {
+		employeeID = *user.EmployeeID
+	}
 	_, err := r.DB.Exec(`
         INSERT INTO users (
             id,employee_id, email_addrs, user_name, full_name,
@@ -95,6 +109,7 @@ func (r *UserRepository) Create(user *models.User) error {
         ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
     `,
 		uuid.New().String(),
+		employeeID,
 		user.EmailAddrs, user.UserName, user.FullName,
 		user.Role, user.Department, user.TitleUser, user.PasswordHash,
 		now, now,

@@ -1,11 +1,12 @@
 package middleware
 
 import (
+	"errors"
 	"it-request-backend/utils"
 	"strings"
-	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/golang-jwt/jwt/v5"
 )
 
 func AuthRequired() gin.HandlerFunc {
@@ -31,21 +32,26 @@ func AuthRequired() gin.HandlerFunc {
 
 		claims, err := utils.VerifyToken(token)
 		if err != nil {
-			c.JSON(401, gin.H{"error": "Unauthorized — token tidak valid"})
+			if errors.Is(err, jwt.ErrTokenExpired) {
+				c.JSON(401, gin.H{"error": "Session expired", "code": "TOKEN EXPIRED"})
+			} else {
+				c.JSON(401, gin.H{"error": "Unauthorized — token tidak valid"})
+			}
 			c.Abort()
 			return
 		}
 
-		if time.Now().After(claims.ExpiresAt.Time) {
-			c.JSON(401, gin.H{
-				"error": "Session expired",
-				"code":  "TOKEN_EXPIRED",
-			})
-			c.Abort()
-			c.Next()
-		}
+		// if time.Now().After(claims.ExpiresAt.Time) {
+		// 	c.JSON(401, gin.H{
+		// 		"error": "Session expired",
+		// 		"code":  "TOKEN_EXPIRED",
+		// 	})
+		// 	c.Abort()
+		// 	c.Next()
+		// }
 
 		c.Set("user", claims)
+		c.Set("role", string(claims.Role))
 		c.Next()
 	}
 }

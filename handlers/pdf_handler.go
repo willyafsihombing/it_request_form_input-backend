@@ -34,13 +34,6 @@ func (h *PDFHandler) GeneratePDF(c *gin.Context) {
 		return
 	}
 
-	// monthID := map[string]string{
-	// 	"Jan": "Jan", "Feb": "Feb", "Mar": "Mar",
-	// 	"Apr": "Apr", "May": "Mei", "Jun": "Jun",
-	// 	"Jul": "Jul", "Aug": "Agu", "Sep": "Sep",
-	// 	"Oct": "Okt", "Nov": "Nov", "Dec": "Des",
-	// }
-
 	// now := time.Now()
 	// monthYear := now.Format("012006")
 	fileName := fmt.Sprintf("%s.pdf", req.FormNumber) //->%s_%s

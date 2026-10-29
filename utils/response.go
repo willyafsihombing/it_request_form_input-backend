@@ -1,6 +1,8 @@
 package utils
 
-import "github.com/gin-gonic/gin"
+import (
+	"github.com/gin-gonic/gin"
+)
 
 func OK(c *gin.Context, data interface{}) {
 	c.JSON(200, data)
@@ -12,6 +14,10 @@ func Created(c *gin.Context, data interface{}) {
 
 func BadRequest(c *gin.Context, message string) {
 	c.JSON(400, gin.H{"error": message})
+}
+
+func Forbidden(c *gin.Context, message string) {
+	c.JSON(403, gin.H{"error": message})
 }
 
 func NotFound(c *gin.Context, message string) {

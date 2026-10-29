@@ -4,6 +4,7 @@ package handlers
 import (
 	"it-request-backend/repository"
 	"it-request-backend/utils"
+	"log"
 
 	"github.com/gin-gonic/gin"
 )
@@ -22,7 +23,7 @@ func (h *StatsHandler) GetStats(c *gin.Context) {
 
 	stats, err := h.Repo.FetchStats(reqName)
 	if err != nil {
-		// log.Printf("Stats error : %v%", err)
+		log.Printf("Stats error : %v", err)
 		utils.InternalError(c, "Internal server error")
 		return
 	}

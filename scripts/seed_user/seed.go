@@ -14,13 +14,19 @@ import (
 )
 
 func main() {
-	godotenv.Load(".env")
-
-	db, err := sql.Open("postgres", os.Getenv("DATABASE_URL"))
-	if err != nil {
-		log.Fatal("❌ Gagal connect DB:", err)
+	if err := godotenv.Load("../../.env"); err != nil {
+		log.Println("⚠️  .env tidak ditemukan di ../../.env:", err)
 	}
-	defer db.Close()
+
+	dsn := os.Getenv("DATABASE_URL")
+	if dsn == "" {
+		log.Fatal("❌ DATABASE_URL kosong, cek lokasi file .env")
+	}
+
+	db, err := sql.Open("postgres", dsn)
+	if err != nil {
+		log.Fatal("❌ Gagal koneksi ke DB:", err)
+	}
 
 	if err := db.Ping(); err != nil {
 		log.Fatal("❌ DB tidak merespon:", err)
