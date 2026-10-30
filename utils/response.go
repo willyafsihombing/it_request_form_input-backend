@@ -20,6 +20,10 @@ func Forbidden(c *gin.Context, message string) {
 	c.JSON(403, gin.H{"error": message})
 }
 
+func TooManyRequests(c *gin.Context, message string) {
+	c.JSON(429, gin.H{"error": message})
+}
+
 func NotFound(c *gin.Context, message string) {
 	c.JSON(404, gin.H{"error": message})
 }

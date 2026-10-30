@@ -26,7 +26,7 @@ func (r *UserRepository) FindByLogin(login string) (*models.User, error) {
         SELECT
             id, email_addrs, user_name, full_name,
             role, department, title_user, password_hash,employee_id,
-            deleted_at, created_at, updated_at
+			must_change_password,deleted_at, created_at, updated_at
         FROM users
         WHERE (email_addrs = $1 OR user_name = $1)
           AND deleted_at IS NULL
@@ -36,7 +36,7 @@ func (r *UserRepository) FindByLogin(login string) (*models.User, error) {
 	err := r.DB.QueryRow(query, login).Scan(
 		&user.ID, &user.EmailAddrs, &user.UserName, &user.FullName,
 		&user.Role, &user.Department, &user.TitleUser, &user.PasswordHash, &employeeID,
-		&deletedAt, &user.CreatedAt, &user.UpdatedAt,
+		&user.MustChangePassword, &deletedAt, &user.CreatedAt, &user.UpdatedAt,
 	)
 	if err == sql.ErrNoRows {
 		return nil, nil
@@ -66,7 +66,7 @@ func (r *UserRepository) FindByID(id string) (*models.User, error) {
         SELECT
             id, email_addrs, user_name, full_name,
             role, department, title_user, password_hash,employee_id,
-            deleted_at, created_at, updated_at
+            must_change_password,deleted_at, created_at, updated_at
         FROM users
         WHERE id = $1 AND deleted_at IS NULL
     `
@@ -74,7 +74,7 @@ func (r *UserRepository) FindByID(id string) (*models.User, error) {
 	err := r.DB.QueryRow(query, id).Scan(
 		&user.ID, &user.EmailAddrs, &user.UserName, &user.FullName,
 		&user.Role, &user.Department, &user.TitleUser, &user.PasswordHash, &employeeID,
-		&deletedAt, &user.CreatedAt, &user.UpdatedAt,
+		&user.MustChangePassword, &deletedAt, &user.CreatedAt, &user.UpdatedAt,
 	)
 	if err == sql.ErrNoRows {
 		return nil, nil
@@ -106,7 +106,7 @@ func (r *UserRepository) Create(user *models.User) error {
             id,employee_id, email_addrs, user_name, full_name,
             role, department, title_user, password_hash,
             created_at, updated_at
-        ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
+        ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
     `,
 		uuid.New().String(),
 		employeeID,

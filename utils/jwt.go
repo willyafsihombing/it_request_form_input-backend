@@ -9,15 +9,17 @@ import (
 )
 
 type JWTClaims struct {
-	ID         string `json:"id"`
-	EmailAddrs string `json:"emailAddrs"`
-	UserName   string `json:"userName"`
-	FullName   string `json:"fullName"`
-	Role       string `json:"role"`
-	Department string `json:"department"`
-	TitleUser  string `json:"titleUser"`
-	EmployeeID string `json:"employeeId,omitempty"`
-	NIK        string `json:"nik,omitempty"`
+	ID                 string `json:"id"`
+	EmailAddrs         string `json:"emailAddrs"`
+	UserName           string `json:"userName"`
+	FullName           string `json:"fullName"`
+	Role               string `json:"role"`
+	Department         string `json:"department"`
+	TitleUser          string `json:"titleUser"`
+	EmployeeID         string `json:"employeeId,omitempty"`
+	NIK                string `json:"nik,omitempty"`
+	MustChangePassword bool   `json:"mustChangePassword,omitempty"`
+
 	jwt.RegisteredClaims
 }
 

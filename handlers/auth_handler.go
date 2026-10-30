@@ -1,10 +1,16 @@
 package handlers
 
 import (
+	"fmt"
 	"it-request-backend/models"
 	"it-request-backend/repository"
 	"it-request-backend/utils"
+	"log"
+	"net/http"
+	"os"
+	"strconv"
 	"strings"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"golang.org/x/crypto/bcrypt"
@@ -20,6 +26,32 @@ func NewAuthHandler(userRepo *repository.UserRepository, employeeRepo *repositor
 		UserRepo:     userRepo,
 		EmployeeRepo: employeeRepo,
 	}
+}
+
+var dummyHash, _ = bcrypt.GenerateFromPassword([]byte("dummy-password-for-timing"), 12)
+
+func setAuthCookie(c *gin.Context, value string, maxAge int) {
+	http.SetCookie(c.Writer, &http.Cookie{
+		Name:     "auth-token",
+		Value:    value,
+		Path:     "/",
+		MaxAge:   maxAge,
+		HttpOnly: true,
+		Secure:   os.Getenv("COOKIE_SECURE") == "true",
+		SameSite: http.SameSiteLaxMode,
+	})
+}
+
+func tooManyLogins(c *gin.Context, wait time.Duration) {
+	c.Header("Retry-After", strconv.Itoa(int(wait.Seconds())))
+	utils.TooManyRequests(c, fmt.Sprintf(
+		"Terlalu banyak percobaan login. Coba lagi dalam %d menit", int(wait.Minutes())+1))
+}
+
+func failLogin(c *gin.Context, userKey, ip string) {
+	utils.LoginAttempts.Fail(userKey)
+	utils.IPAttempts.Fail(ip)
+	utils.BadRequest(c, "Email/username atau password salah")
 }
 
 func (h *AuthHandler) loadEmployee(user *models.User) (*models.Employee, error) {
@@ -54,6 +86,18 @@ func (h *AuthHandler) Login(c *gin.Context) {
 	}
 
 	login := strings.ToLower(strings.TrimSpace(body.Login))
+	ip := c.ClientIP()
+	userKey := login + "|" + ip
+
+	if blocked, wait := utils.LoginAttempts.Blocked(userKey); blocked {
+		tooManyLogins(c, wait)
+		return
+	}
+
+	if blocked, wait := utils.IPAttempts.Blocked(ip); blocked {
+		tooManyLogins(c, wait)
+		return
+	}
 
 	user, err := h.UserRepo.FindByLogin(login)
 	if err != nil {
@@ -65,14 +109,16 @@ func (h *AuthHandler) Login(c *gin.Context) {
 		return
 	}
 
-	// Verifikasi password
 	if err := bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(body.Password)); err != nil {
-		utils.BadRequest(c, "Email/username atau password salah")
+		failLogin(c, userKey, ip)
 		return
 	}
 
+	utils.LoginAttempts.Reset(userKey)
+
 	emp, err := h.loadEmployee(user)
 	if err != nil {
+		log.Println("Login: loademployee error:", err)
 		utils.InternalError(c, "Gagal memuat data karyawan")
 		return
 	}
@@ -87,19 +133,17 @@ func (h *AuthHandler) Login(c *gin.Context) {
 		employeeID, nik = emp.ID, emp.NIK
 	}
 
-	// Generate token
 	token, err := utils.GenerateToken(
 		user.ID, user.EmailAddrs, user.UserName,
 		user.FullName, user.Role, user.Department, user.TitleUser, employeeID, nik,
 	)
 	if err != nil {
+		log.Println("login: GenerateToken error", err)
 		utils.InternalError(c, "Gagal generate token")
 		return
 	}
 
-	// Set cookie
-	// c.SetCookie("auth-token", token, 60*5, "/", "", false, true)
-	c.SetCookie("auth-token", token, int(utils.TokenTTL().Seconds()), "/", "", false, true)
+	setAuthCookie(c, token, int(utils.TokenTTL().Seconds()))
 
 	utils.OK(c, models.LoginResponse{
 		Success: true,

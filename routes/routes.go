@@ -5,7 +5,6 @@ import (
 	"it-request-backend/handlers"
 	"it-request-backend/middleware"
 	"it-request-backend/repository"
-	"log"
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
@@ -13,6 +12,7 @@ import (
 
 func Setup(db *sql.DB) *gin.Engine {
 	r := gin.Default()
+	r.SetTrustedProxies(nil)
 
 	r.Use(cors.New(cors.Config{
 		AllowOrigins:     []string{"http://localhost:3000"},
@@ -34,19 +34,22 @@ func Setup(db *sql.DB) *gin.Engine {
 	statsHandler := handlers.NewStatsHandler(statsRepo)
 	pdfHandler := handlers.NewPDFHandler(requestRepo)
 	employeeHandler := handlers.NewEmployeeHandler(employeeRepo)
+	accountHandler := handlers.NewAccountHandler(employeeRepo, userRepo)
 
 	api := r.Group("/api")
 	{
 		// Auth — public
 		auth := api.Group("/auth")
+
 		{
 			auth.POST("/login", authHandler.Login)
 			auth.POST("/logout", authHandler.Logout)
 			auth.GET("/me", middleware.AuthRequired(), authHandler.Me)
+			auth.POST("/change-password", middleware.AuthRequired(), middleware.MustChangeGuard(), authHandler.ChangePassword)
 		}
 
 		// Requests — protected (write)
-		requests := api.Group("/requests", middleware.AuthRequired())
+		requests := api.Group("/requests", middleware.AuthRequired(), middleware.MustChangeGuard())
 		{
 			requests.GET("", requestHandler.GetAll)
 			requests.POST("", requestHandler.Create)
@@ -62,19 +65,19 @@ func Setup(db *sql.DB) *gin.Engine {
 		}
 
 		// Employees
-		employeesRead := api.Group("/employees", middleware.AuthRequired())
+		employeesRead := api.Group("/employees", middleware.AuthRequired(), middleware.MustChangeGuard())
 		{
-			employeesRead.GET("/search", employeeHandler.Search)
+			employeesRead.GET("/search", employeeHandler.SearchInScope)
 		}
 
-		employeesView := api.Group("/employees", middleware.AuthRequired(), middleware.RequireRole("admin", "staff"))
+		employeesView := api.Group("/employees", middleware.AuthRequired(), middleware.RequireRole("admin", "staff"), middleware.MustChangeGuard())
 		{
 			employeesView.GET("/stats", employeeHandler.Stats)
 			employeesView.GET("", employeeHandler.GetAll)
 			employeesView.GET("/:id", employeeHandler.GetByID)
 		}
 
-		employeesAdmin := api.Group("/employees", middleware.AuthRequired(), middleware.RequireRole("admin"))
+		employeesAdmin := api.Group("/employees", middleware.AuthRequired(), middleware.RequireRole("admin"), middleware.MustChangeGuard())
 		{
 			employeesAdmin.POST("/import/excel", employeeHandler.ImportExcel)
 			employeesAdmin.GET("/import/template", employeeHandler.ImportTemplate)
@@ -82,18 +85,19 @@ func Setup(db *sql.DB) *gin.Engine {
 			employeesAdmin.POST("", employeeHandler.Create)
 			employeesAdmin.PATCH("/:id", employeeHandler.Update)
 			employeesAdmin.DELETE("/:id", employeeHandler.Delete)
+
+			//Aktivasi login user
+			employeesAdmin.GET("accounts/pending", accountHandler.AccountsPending)
+			employeesAdmin.POST("accounts/status", accountHandler.AccountStatus)
+			employeesAdmin.POST("accounts/pending", accountHandler.CreateAccounts)
+			employeesAdmin.GET("/:id	/reset-passowrd", accountHandler.ResetPassword)
 		}
 
 		// Stats
-		stats := api.Group("/stats", middleware.AuthRequired())
+		stats := api.Group("/stats", middleware.AuthRequired(), middleware.MustChangeGuard())
 		{
 			stats.GET("", statsHandler.GetStats)
 		}
 	}
-
-	for _, rt := range r.Routes() {
-		log.Println("ROUTE:", rt.Method, rt.Path)
-	}
-
 	return r
 }
