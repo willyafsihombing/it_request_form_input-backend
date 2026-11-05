@@ -63,17 +63,18 @@ func (h *AuthHandler) loadEmployee(user *models.User) (*models.Employee, error) 
 
 func newUserResponse(u *models.User, emp *models.Employee) models.UserResponse {
 	return models.UserResponse{
-		ID:         u.ID,
-		EmailAddrs: u.EmailAddrs,
-		UserName:   u.UserName,
-		FullName:   u.FullName,
-		Role:       u.Role,
-		Department: u.Department,
-		TitleUser:  u.TitleUser,
-		EmployeeID: u.EmployeeID,
-		Employee:   emp,
-		CreatedAt:  u.CreatedAt,
-		UpdatedAt:  u.UpdatedAt,
+		ID:                 u.ID,
+		EmailAddrs:         u.EmailAddrs,
+		UserName:           u.UserName,
+		FullName:           u.FullName,
+		Role:               u.Role,
+		Department:         u.Department,
+		TitleUser:          u.TitleUser,
+		EmployeeID:         u.EmployeeID,
+		MustChangePassword: u.MustChangePassword,
+		Employee:           emp,
+		CreatedAt:          u.CreatedAt,
+		UpdatedAt:          u.UpdatedAt,
 	}
 }
 
@@ -124,7 +125,7 @@ func (h *AuthHandler) Login(c *gin.Context) {
 	}
 
 	if user.EmployeeID != nil && *user.EmployeeID != "" && (emp == nil || !emp.IsActive) {
-		utils.BadRequest(c, "Akun karyawan tidak aktif. Silakan hubungi HRD untuk mengaktifkan kembali akun Anda.")
+		utils.BadRequest(c, "Akun karyawan tidak aktif. Silakan hubungi IT untuk mengaktifkan kembali akun Anda.")
 		return
 	}
 
@@ -133,12 +134,12 @@ func (h *AuthHandler) Login(c *gin.Context) {
 		employeeID, nik = emp.ID, emp.NIK
 	}
 
-	token, err := utils.GenerateToken(
+	token, err := utils.GenerateTokenFlagged(
 		user.ID, user.EmailAddrs, user.UserName,
-		user.FullName, user.Role, user.Department, user.TitleUser, employeeID, nik,
+		user.FullName, user.Role, user.Department, user.TitleUser, employeeID, nik, user.MustChangePassword,
 	)
 	if err != nil {
-		log.Println("login: GenerateToken error", err)
+		log.Println("login: GenerateTokenFlagged error", err)
 		utils.InternalError(c, "Gagal generate token")
 		return
 	}

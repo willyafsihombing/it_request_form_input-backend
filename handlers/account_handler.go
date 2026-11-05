@@ -273,7 +273,7 @@ func (h *AccountHandler) CreateAccounts(c *gin.Context) {
 		case err == repository.ErrAccountDuplicate:
 			r.Status, r.Message = "failed", "Username atau email sudah dipakai"
 		case err != nil:
-			log.Println("create accounts: InsertAccount error:", err) // password tidak pernah dicatat
+			log.Println("create accounts: InsertAccount error:", err)
 			r.Status, r.Message = "failed", "Gagal menyimpan akun"
 		default:
 			r.Status, r.Password = "created", cd.password
@@ -316,7 +316,6 @@ func (h *AccountHandler) ResetPassword(c *gin.Context) {
 
 	emp, err := h.EmployeeRepo.FindByID(id)
 	if err != nil {
-		log.Println("reset password: FindByID error:", err)
 		utils.InternalError(c, "Gagal memuat data karyawan")
 		return
 	}
@@ -327,7 +326,6 @@ func (h *AccountHandler) ResetPassword(c *gin.Context) {
 
 	user, err := h.UserRepo.FindByEmployeeID(id)
 	if err != nil {
-		log.Println("reset password: FindByEmployeeID error:", err)
 		utils.InternalError(c, "Gagal memuat akun")
 		return
 	}
@@ -351,6 +349,8 @@ func (h *AccountHandler) ResetPassword(c *gin.Context) {
 		utils.InternalError(c, "Gagal menyimpan password baru")
 		return
 	}
+
+	utils.LoginAttempts.ResetPrefix(strings.ToLower(user.UserName) + "|")
 
 	utils.OK(c, gin.H{"result": models.AccountResult{
 		EmployeeID: emp.ID,

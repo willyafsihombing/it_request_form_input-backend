@@ -232,6 +232,58 @@ func (r *RequestRepository) Create(req *models.Request) error {
 	return err
 }
 
+func (r *RequestRepository) Resubmit(id string, q *models.Request) (bool, error) {
+	cols := []struct {
+		col string
+		val any
+	}{
+		{"request_title", q.RequestTitle},
+		{"req_company", q.ReqCompany},
+		{"rec_company", q.RecCompany},
+		{"rec_dept", q.RecDept},
+		{"rec_location", q.RecLocation},
+		{"rec_personnel", q.RecPersonnel},
+		{"rec_emp_id", q.RecEmpId},
+		{"rec_title", q.RecTitle},
+		{"rec_status", q.RecStatus},
+		{"sn_add", q.SnAdd}, {"sn_change", q.SnChange}, {"sn_terminate", q.SnTerminate},
+		{"sn_lan", q.SnLAN}, {"sn_vpn", q.SnVPN}, {"sn_email", q.SnEmail},
+		{"sn_file_sharing", q.SnFileSharing}, {"sn_intranet", q.SnIntranet}, {"sn_other", q.SnOther},
+		{"hw_add", q.HwAdd}, {"hw_change", q.HwChange}, {"hw_terminate", q.HwTerminate},
+		{"hw_pc", q.HwPC}, {"hw_printer", q.HwPrinter}, {"hw_notebook", q.HwNotebook},
+		{"hw_ms_office", q.HwMSOffice}, {"hw_adobe", q.HwAdobe}, {"hw_zoom", q.HwZoom}, {"hw_other", q.HwOther},
+		{"erp_add", q.ErpAdd}, {"erp_change", q.ErpChange}, {"erp_terminate", q.ErpTerminate},
+		{"erp_pronto", q.ErpPronto}, {"erp_smart_mining", q.ErpSmartMining},
+		{"erp_position_id", q.ErpPositionId}, {"erp_district", q.ErpDistrict}, {"erp_ref", q.ErpRef},
+		{"erp_sign_on_id", q.ErpSignOnId}, {"erp_global_profile", q.ErpGlobalProfile},
+		{"additional_desc", q.AdditionalDesc},
+		{"cost_code", q.CostCode},
+		{"justification", q.Justification},
+		{"sig_spt_dept", q.SigSptDept}, {"sig_dept_mgr", q.SigDeptMgr},
+		{"sig_sr_mgr", q.SigSrMgr}, {"sig_hoo", q.SigHOO},
+		{"priority", q.Priority},
+	}
+
+	set := make([]string, 0, len(cols)+2)
+	args := make([]any, 0, len(cols)+1)
+	args = append(args, id) // $1
+	for i, c := range cols {
+		set = append(set, fmt.Sprintf("%s = $%d", c.col, i+2))
+		args = append(args, c.val)
+	}
+
+	query := `UPDATE requests SET ` + strings.Join(set, ", ") +
+		`, status = 'pending', updated_at = now()
+		 WHERE id = $1 AND status = 'rejected' AND deleted_at IS NULL`
+
+	res, err := r.DB.Exec(query, args...)
+	if err != nil {
+		return false, err
+	}
+	n, _ := res.RowsAffected()
+	return n > 0, nil
+}
+
 // Cek duplikat form number
 func (r *RequestRepository) ExistsByFormNumber(formNumber string) (bool, error) {
 	var count int

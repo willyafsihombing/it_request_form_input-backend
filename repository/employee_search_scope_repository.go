@@ -19,7 +19,7 @@ func (r *EmployeeRepository) SearchScoped(q, departemen string, limit int) ([]mo
 		WHERE deleted_at IS NULL AND is_active
 		  AND ($1::text = '' OR nama ILIKE '%' || $1 || '%' OR nik ILIKE $1 || '%')
 		  AND ($2::text = '' OR lower(departemen) = lower($2))
-		ORDER BY nama
+		ORDER BY nama	
 		LIMIT $3`, q, departemen, limit)
 	if err != nil {
 		return nil, err

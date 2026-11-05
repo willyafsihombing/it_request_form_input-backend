@@ -1,6 +1,7 @@
 package utils
 
 import (
+	"strings"
 	"sync"
 	"time"
 )
@@ -86,6 +87,16 @@ func (l *LoginLimiter) cleanupLoop() {
 			}
 		}
 		l.mu.Unlock()
+	}
+}
+
+func (l *LoginLimiter) ResetPrefix(prefix string) {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	for k := range l.items {
+		if strings.HasPrefix(k, prefix) {
+			delete(l.items, k)
+		}
 	}
 }
 

@@ -42,9 +42,18 @@ func (r *UserRepository) InsertAccount(a NewAccount) error {
 func (r *UserRepository) UpdatePassword(id, hash string, mustChange bool) error {
 	_, err := r.DB.Exec(`
 		UPDATE users
-		SET password_hash = $2, must_change_password = $3, updated_at = now()
-		WHERE id = $1 AND deleted_at IS NULL`, id, hash, mustChange)
+		SET password_hash = $2, must_change_password = $3,
+			password_changed_at = $4, updated_at = $4
+		WHERE id = $1 AND deleted_at IS NULL`, id, hash, mustChange, time.Now())
 	return err
+}
+
+func (r *UserRepository) PasswordChangedAt(id string) (time.Time, error) {
+	var t time.Time
+	err := r.DB.QueryRow(
+		`SELECT password_changed_at FROM users WHERE id = $1 AND deleted_at IS NULL`, id,
+	).Scan(&t)
+	return t, err
 }
 
 func (r *UserRepository) AccountsByEmployeeIDs(ids []string) (map[string]string, error) {

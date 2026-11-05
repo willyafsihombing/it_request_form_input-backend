@@ -109,7 +109,8 @@ func (h *EmployeeHandler) GetAll(c *gin.Context) {
 		perPage = 20
 	}
 
-	list, total, err := h.Repo.List(c.Query("q"), c.Query("departemen"), status, staffType, page, perPage)
+	account := c.Query("account")
+	list, total, err := h.Repo.List(c.Query("q"), c.Query("departemen"), status, staffType, account, page, perPage)
 	if err != nil {
 		utils.InternalError(c, "Gagal memuat data karyawan")
 		return

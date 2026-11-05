@@ -98,7 +98,7 @@ func (r *EmployeeRepository) Search(q string, limit int) ([]models.EmployeeOptio
 }
 
 // List — untuk halaman kelola karyawan (termasuk yang nonaktif), dengan pagination
-func (r *EmployeeRepository) List(q, departemen, status, staffType string, page, perPage int) ([]models.Employee, int, error) {
+func (r *EmployeeRepository) List(q, departemen, status, staffType, account string, page, perPage int) ([]models.Employee, int, error) {
 	if page < 1 {
 		page = 1
 	}
@@ -113,22 +113,28 @@ func (r *EmployeeRepository) List(q, departemen, status, staffType string, page,
 	if staffType != models.StaffTypeStaff && staffType != models.StaffTypeNonStaff {
 		staffType = ""
 	}
+	if account != "has" && account != "no" {
+		account = ""
+	}
 
 	where := `deleted_at IS NULL
 		AND ($1::text = '' OR nama ILIKE '%' || $1 || '%' OR nik ILIKE $1 || '%')
 		AND ($2::text = '' OR departemen = $2)
 		AND ($3::text = '' OR ($3 = 'active' AND is_active) OR($3 = 'inactive' AND NOT is_active)) 
-		AND ($4::text = '' OR staff_type = $4)`
+		AND ($4::text = '' OR staff_type = $4)
+		AND ($5::text = '' 
+			OR ($5 = 'has' AND EXISTS(SELECT 1 FROM users u WHERE u.employee_id = employees.id)) 
+			OR ($5 = 'no' AND NOT EXISTS(SELECT 1 FROM users u WHERE u.employee_id = employees.id)))`
 
 	var total int
-	if err := r.db.QueryRow(`SELECT COUNT(*) FROM employees WHERE `+where, q, departemen, status, staffType).Scan(&total); err != nil {
+	if err := r.db.QueryRow(`SELECT COUNT(*) FROM employees WHERE `+where, q, departemen, status, staffType, account).Scan(&total); err != nil {
 		return nil, 0, err
 	}
 
 	rows, err := r.db.Query(
 		`SELECT `+employeeColumns+` FROM employees WHERE `+where+
-			` ORDER BY nama LIMIT $5 OFFSET $6`,
-		q, departemen, status, staffType, perPage, (page-1)*perPage)
+			` ORDER BY nama LIMIT $6 OFFSET $7`,
+		q, departemen, status, staffType, account, perPage, (page-1)*perPage)
 	if err != nil {
 		return nil, 0, err
 	}

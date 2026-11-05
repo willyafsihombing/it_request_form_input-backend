@@ -15,9 +15,9 @@ func Setup(db *sql.DB) *gin.Engine {
 	r.SetTrustedProxies(nil)
 
 	r.Use(cors.New(cors.Config{
-		AllowOrigins:     []string{"http://localhost:3000"},
-		AllowMethods:     []string{"GET", "POST", "PATCH", "DELETE", "OPTIONS"},
-		AllowHeaders:     []string{"Origin", "Content-Type", "Authorization"},
+		AllowOrigins:     []string{"http://localhost:3030"},
+		AllowMethods:     []string{"GET", "POST", "PATCH", "DELETE", "OPTIONS", "PUT"},
+		AllowHeaders:     []string{"Origin", "Content-Type", "Authorization", "Cache-Control", "Pragma"},
 		ExposeHeaders:    []string{"Content-Disposition", "Content-Length", "Content-Type"},
 		AllowCredentials: true,
 	}))
@@ -29,12 +29,21 @@ func Setup(db *sql.DB) *gin.Engine {
 	employeeRepo := repository.NewEmployeeRepository(db)
 
 	// Handler
-	requestHandler := handlers.NewRequestHandler(requestRepo)
+	requestHandler := handlers.NewRequestHandler(requestRepo, userRepo)
 	authHandler := handlers.NewAuthHandler(userRepo, employeeRepo)
 	statsHandler := handlers.NewStatsHandler(statsRepo)
 	pdfHandler := handlers.NewPDFHandler(requestRepo)
 	employeeHandler := handlers.NewEmployeeHandler(employeeRepo)
 	accountHandler := handlers.NewAccountHandler(employeeRepo, userRepo)
+
+	authed := func(extra ...gin.HandlerFunc) []gin.HandlerFunc {
+		base := []gin.HandlerFunc{
+			middleware.AuthRequired(),
+			middleware.SessionGuard(userRepo),
+			middleware.MustChangeGuard(),
+		}
+		return append(base, extra...)
+	}
 
 	api := r.Group("/api")
 	{
@@ -45,16 +54,17 @@ func Setup(db *sql.DB) *gin.Engine {
 			auth.POST("/login", authHandler.Login)
 			auth.POST("/logout", authHandler.Logout)
 			auth.GET("/me", middleware.AuthRequired(), authHandler.Me)
-			auth.POST("/change-password", middleware.AuthRequired(), middleware.MustChangeGuard(), authHandler.ChangePassword)
+			auth.POST("/change-password", append(authed(), authHandler.ChangePassword)...)
 		}
 
 		// Requests — protected (write)
-		requests := api.Group("/requests", middleware.AuthRequired(), middleware.MustChangeGuard())
+		requests := api.Group("/requests", authed()...)
 		{
 			requests.GET("", requestHandler.GetAll)
 			requests.POST("", requestHandler.Create)
 			requests.PATCH("/:id", requestHandler.UpdateByID)
 			requests.DELETE("/:id", requestHandler.DeletedByID)
+			requests.PUT("/:id/resubmit", requestHandler.Resubmit)
 		}
 
 		// Requests — public (read) dalam satu group agar tidak konflik
@@ -65,19 +75,19 @@ func Setup(db *sql.DB) *gin.Engine {
 		}
 
 		// Employees
-		employeesRead := api.Group("/employees", middleware.AuthRequired(), middleware.MustChangeGuard())
+		employeesRead := api.Group("/employees", authed()...)
 		{
 			employeesRead.GET("/search", employeeHandler.SearchInScope)
 		}
 
-		employeesView := api.Group("/employees", middleware.AuthRequired(), middleware.RequireRole("admin", "staff"), middleware.MustChangeGuard())
+		employeesView := api.Group("/employees", authed(middleware.RequireRole("admin"))...)
 		{
 			employeesView.GET("/stats", employeeHandler.Stats)
 			employeesView.GET("", employeeHandler.GetAll)
 			employeesView.GET("/:id", employeeHandler.GetByID)
 		}
 
-		employeesAdmin := api.Group("/employees", middleware.AuthRequired(), middleware.RequireRole("admin"), middleware.MustChangeGuard())
+		employeesAdmin := api.Group("/employees", authed(middleware.RequireRole("admin"))...)
 		{
 			employeesAdmin.POST("/import/excel", employeeHandler.ImportExcel)
 			employeesAdmin.GET("/import/template", employeeHandler.ImportTemplate)
@@ -87,14 +97,14 @@ func Setup(db *sql.DB) *gin.Engine {
 			employeesAdmin.DELETE("/:id", employeeHandler.Delete)
 
 			//Aktivasi login user
-			employeesAdmin.GET("accounts/pending", accountHandler.AccountsPending)
-			employeesAdmin.POST("accounts/status", accountHandler.AccountStatus)
-			employeesAdmin.POST("accounts/pending", accountHandler.CreateAccounts)
-			employeesAdmin.GET("/:id	/reset-passowrd", accountHandler.ResetPassword)
+			employeesAdmin.GET("/accounts/pending", accountHandler.AccountsPending)
+			employeesAdmin.POST("/accounts/status", accountHandler.AccountStatus)
+			employeesAdmin.POST("/accounts", accountHandler.CreateAccounts)
+			employeesAdmin.POST("/:id/reset-password", accountHandler.ResetPassword)
 		}
 
 		// Stats
-		stats := api.Group("/stats", middleware.AuthRequired(), middleware.MustChangeGuard())
+		stats := api.Group("/stats", authed()...)
 		{
 			stats.GET("", statsHandler.GetStats)
 		}

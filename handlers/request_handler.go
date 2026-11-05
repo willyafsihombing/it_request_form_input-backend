@@ -6,6 +6,7 @@ import (
 	"it-request-backend/repository"
 	"it-request-backend/utils"
 	"math"
+	"net/http"
 	"strconv"
 	"strings"
 	"time"
@@ -15,11 +16,12 @@ import (
 )
 
 type RequestHandler struct {
-	Repo *repository.RequestRepository
+	Repo     *repository.RequestRepository
+	UserRepo *repository.UserRepository
 }
 
-func NewRequestHandler(repo *repository.RequestRepository) *RequestHandler {
-	return &RequestHandler{Repo: repo}
+func NewRequestHandler(repo *repository.RequestRepository, userRepo *repository.UserRepository) *RequestHandler {
+	return &RequestHandler{Repo: repo, UserRepo: userRepo}
 }
 
 // GET /api/requests
@@ -184,7 +186,79 @@ func (h *RequestHandler) UpdateByID(c *gin.Context) {
 	}
 
 	utils.OK(c, updated)
+}
 
+func (h *RequestHandler) Resubmit(c *gin.Context) {
+	id := c.Param("id")
+	claims := c.MustGet("user").(*utils.JWTClaims)
+
+	var body models.Request
+	if err := c.ShouldBindJSON(&body); err != nil {
+		utils.BadRequest(c, "Request body tidak valid")
+		return
+	}
+
+	body.RequestTitle = strings.TrimSpace(body.RequestTitle)
+	if body.RequestTitle == "" {
+		utils.BadRequest(c, "Judul request wajib diisi")
+		return
+	}
+
+	if len(body.RequestTitle) > 100 {
+		utils.BadRequest(c, "Judul request maksimal 100 karakter")
+		return
+	}
+	existing, err := h.Repo.FindByID(id)
+	if err != nil {
+		utils.InternalError(c, "Internal server error")
+		return
+	}
+	if existing == nil {
+		utils.NotFound(c, "Request tidak ditemukan")
+		return
+	}
+	if existing.Status != "rejected" {
+		c.JSON(http.StatusConflict, gin.H{"error": "Hanya request yang ditolak yang dapat diedit"})
+		return
+	}
+	if claims.Role == "user" && !h.isOwner(existing, claims) {
+		c.JSON(http.StatusForbidden, gin.H{"error": "Anda hanya dapat mengedit request milik Anda"})
+		return
+	}
+
+	body.ID = id
+	body.Status = "pending"
+	body.ReqName = existing.ReqName
+	body.SigRequester = existing.SigRequester
+	if body.Priority == "" {
+		body.Priority = "normal"
+	}
+
+	ok, err := h.Repo.Resubmit(id, &body)
+	if err != nil {
+		fmt.Println("[Resubmit Error]:", err.Error())
+		utils.InternalError(c, "Gagal menyimpan perubahan")
+		return
+	}
+	if !ok {
+		c.JSON(http.StatusConflict, gin.H{"error": "Status request sudah berubah, muat ulang halaman"})
+		return
+	}
+
+	updated, err := h.Repo.FindByID(id)
+	if err != nil {
+		utils.InternalError(c, "Internal server error")
+		return
+	}
+	utils.OK(c, updated)
+}
+
+func (h *RequestHandler) isOwner(r *models.Request, claims *utils.JWTClaims) bool {
+	u, err := h.UserRepo.FindByID(claims.ID)
+	if err != nil || u == nil {
+		return false
+	}
+	return strings.EqualFold(strings.TrimSpace(r.ReqName), strings.TrimSpace(u.FullName))
 }
 
 func (h *RequestHandler) DeletedByID(c *gin.Context) {

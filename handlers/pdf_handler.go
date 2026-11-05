@@ -38,7 +38,7 @@ func (h *PDFHandler) GeneratePDF(c *gin.Context) {
 	// monthYear := now.Format("012006")
 	fileName := fmt.Sprintf("%s.pdf", req.FormNumber) //->%s_%s
 
-	printURL := fmt.Sprintf("http://localhost:3000/dashboard/requests/%s/print", id)
+	printURL := fmt.Sprintf("http://localhost:3030/dashboard/requests/%s/print", id)
 
 	pdfBuf, err := generatePDFFromURL(printURL)
 	if err != nil {
