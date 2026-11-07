@@ -11,7 +11,8 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
-	"uuid"
+
+	"github.com/google/uuid"
 
 	"github.com/gin-gonic/gin"
 )

@@ -294,7 +294,6 @@ func (r *RequestRepository) ExistsByFormNumber(formNumber string) (bool, error) 
 	return count > 0, err
 }
 
-// Update — PATCH allowed fields only
 func (r *RequestRepository) Update(id string, fields map[string]interface{}) error {
 	fieldMap := map[string]string{
 		"requestTitle":   "request_title",

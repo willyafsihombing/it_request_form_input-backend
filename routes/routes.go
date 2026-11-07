@@ -15,7 +15,7 @@ func Setup(db *sql.DB) *gin.Engine {
 	r.SetTrustedProxies(nil)
 
 	r.Use(cors.New(cors.Config{
-		AllowOrigins:     []string{"http://localhost:3030"},
+		AllowOrigins:     []string{"http://localhost:3030", "http://localhost:3030"},
 		AllowMethods:     []string{"GET", "POST", "PATCH", "DELETE", "OPTIONS", "PUT"},
 		AllowHeaders:     []string{"Origin", "Content-Type", "Authorization", "Cache-Control", "Pragma"},
 		ExposeHeaders:    []string{"Content-Disposition", "Content-Length", "Content-Type"},

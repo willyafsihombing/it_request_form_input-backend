@@ -142,8 +142,6 @@ func (h *RequestHandler) GetByID(c *gin.Context) {
 func (h *RequestHandler) UpdateByID(c *gin.Context) {
 	id := c.Param("id")
 
-	fmt.Println(id)
-
 	exists, err := h.Repo.ExistsByID(id)
 	if err != nil {
 		utils.InternalError(c, "Internal Server Error")
@@ -236,7 +234,7 @@ func (h *RequestHandler) Resubmit(c *gin.Context) {
 
 	ok, err := h.Repo.Resubmit(id, &body)
 	if err != nil {
-		fmt.Println("[Resubmit Error]:", err.Error())
+		// fmt.Println("[Resubmit Error]:", err.Error())
 		utils.InternalError(c, "Gagal menyimpan perubahan")
 		return
 	}
