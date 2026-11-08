@@ -66,12 +66,12 @@ type Request struct {
 	Priority         string     `json:"priority"`
 	ItNotes          string     `json:"itNotes"`
 	AssignedTo       string     `json:"assignedTo"`
+	CreatedByUserID  *string    `json:"createdByUserId,omitempty"`
 	DeletedAt        *time.Time `json:"deletedAt,omitempty"`
 	CreatedAt        time.Time  `json:"createdAt"`
 	UpdatedAt        time.Time  `json:"updatedAt"`
 }
 
-// Request list item — field terbatas untuk GET all
 type RequestListItem struct {
 	ID             string    `json:"id"`
 	FormNumber     string    `json:"formNumber"`

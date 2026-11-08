@@ -17,7 +17,7 @@ func NewRequestRepository(db *sql.DB) *RequestRepository {
 }
 
 // GET all dengan filter, search, pagination
-func (r *RequestRepository) FindAll(status, priority, search string, page, limit int, reqName string) ([]models.RequestListItem, int, error) {
+func (r *RequestRepository) FindAll(status, priority, search string, page, limit int, reqName, createdBy string) ([]models.RequestListItem, int, error) {
 	conditions := []string{"deleted_at IS NULL"}
 	args := []interface{}{}
 	argIdx := 1
@@ -35,23 +35,27 @@ func (r *RequestRepository) FindAll(status, priority, search string, page, limit
 	}
 
 	if search != "" {
-		searchCondition := fmt.Sprintf(`(
-            form_number ILIKE $%d OR
-			request_title ILIKE $%d OR
-            req_name    ILIKE $%d OR
-            rec_personnel ILIKE $%d OR
-            rec_dept    ILIKE $%d OR
-            rec_location ILIKE $%d
-        )`, argIdx, argIdx+1, argIdx+2, argIdx+3, argIdx+4, argIdx+5)
-		conditions = append(conditions, searchCondition)
-		searchVal := "%" + search + "%"
-		args = append(args, searchVal, searchVal, searchVal, searchVal, searchVal)
-		argIdx += 5
+		conditions = append(conditions, fmt.Sprintf(`(
+			form_number   ILIKE $%[1]d OR
+			request_title ILIKE $%[1]d OR
+			req_name      ILIKE $%[1]d OR
+			rec_personnel ILIKE $%[1]d OR
+			rec_dept      ILIKE $%[1]d OR
+			rec_location  ILIKE $%[1]d
+		)`, argIdx))
+		args = append(args, "%"+search+"%")
+		argIdx++
 	}
 
 	if reqName != "" {
-		conditions = append(conditions, fmt.Sprintf("req_name Ilike $%d", argIdx))
-		args = append(args, "%"+reqName+"%")
+		conditions = append(conditions, fmt.Sprintf("UPPER(TRIM(req_name)) = UPPER(TRIM($%d))", argIdx))
+		args = append(args, reqName)
+		argIdx++
+	}
+
+	if createdBy != "" {
+		conditions = append(conditions, fmt.Sprintf("created_by_user_id = $%d", argIdx))
+		args = append(args, createdBy)
 		argIdx++
 	}
 
@@ -108,6 +112,10 @@ func (r *RequestRepository) FindAll(status, priority, search string, page, limit
 			return nil, 0, err
 		}
 		items = append(items, item)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, 0, err
 	}
 
 	return items, total, nil

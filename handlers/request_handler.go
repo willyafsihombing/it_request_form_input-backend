@@ -24,6 +24,18 @@ func NewRequestHandler(repo *repository.RequestRepository, userRepo *repository.
 	return &RequestHandler{Repo: repo, UserRepo: userRepo}
 }
 
+func currentClaims(c *gin.Context) *utils.JWTClaims {
+	v, ok := c.Get("user")
+	if !ok {
+		return nil
+	}
+	claims, ok := v.(*utils.JWTClaims)
+	if !ok {
+		return nil
+	}
+	return claims
+}
+
 // GET /api/requests
 func (h *RequestHandler) GetAll(c *gin.Context) {
 	status := c.Query("status")
@@ -32,15 +44,25 @@ func (h *RequestHandler) GetAll(c *gin.Context) {
 	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
 	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "20"))
 	reqName := c.Query("reqName")
+	createdBy := ""
+
+	if claims := currentClaims(c); claims != nil && claims.Role == "user" {
+		if claims.ID == "" {
+			utils.Forbidden(c, "Akun tidak valid")
+			return
+		}
+		reqName = ""          // abaikan filter nama dari URL
+		createdBy = claims.ID // filter berdasarkan akun login
+	}
 
 	if page < 1 {
-		page = 1
+		page = 20
 	}
-	if limit < 1 {
-		limit = 20
+	if limit > 100 {
+		limit = 100
 	}
 
-	requests, total, err := h.Repo.FindAll(status, priority, search, page, limit, reqName)
+	requests, total, err := h.Repo.FindAll(status, priority, search, page, limit, reqName, createdBy)
 	if err != nil {
 		utils.InternalError(c, "Internal server error")
 		return
@@ -102,6 +124,12 @@ func (h *RequestHandler) Create(c *gin.Context) {
 		}
 	}
 
+	body.CreatedByUserID = nil
+	if claims := currentClaims(c); claims != nil && claims.ID != "" {
+		uid := claims.ID
+		body.CreatedByUserID = &uid
+	}
+
 	body.ID = uuid.New().String()
 	body.Status = "pending"
 	if body.Priority == "" {
@@ -142,15 +170,22 @@ func (h *RequestHandler) GetByID(c *gin.Context) {
 func (h *RequestHandler) UpdateByID(c *gin.Context) {
 	id := c.Param("id")
 
-	exists, err := h.Repo.ExistsByID(id)
+	existing, err := h.Repo.FindByID(id)
 	if err != nil {
 		utils.InternalError(c, "Internal Server Error")
 		return
 	}
 
-	if !exists {
+	if existing == nil {
 		utils.NotFound(c, "Request not found")
 		return
+	}
+
+	if claims := currentClaims(c); claims != nil {
+		if claims.Role == "staff" && existing.Status == "approved" {
+			utils.Forbidden(c, "Request yang sudah approved tidak bisa diubah. Hubungi admin.")
+			return
+		}
 	}
 
 	var body map[string]interface{}
@@ -161,8 +196,8 @@ func (h *RequestHandler) UpdateByID(c *gin.Context) {
 
 	allowedFields := []string{
 		"requestTitle", "status", "priority", "itNotes", "assignedTo",
-		"techComment", "techAdd", "techAW", "techCR", "techEM", "techIP", "techEP",
-		"signITAdmin", "signMSDIMgr", "signMgr", "signHOO", "costCode", "justification", "additionalDesc",
+		"techComment", "techAD", "techAW", "techCR", "techEM", "techIP", "techEP",
+		"sigITAdmin", "sigMSDIMgr", "sigSrMgr", "sigHOO", "costCode", "justification", "additionalDesc",
 	}
 
 	filtered := map[string]interface{}{}
@@ -252,11 +287,7 @@ func (h *RequestHandler) Resubmit(c *gin.Context) {
 }
 
 func (h *RequestHandler) isOwner(r *models.Request, claims *utils.JWTClaims) bool {
-	u, err := h.UserRepo.FindByID(claims.ID)
-	if err != nil || u == nil {
-		return false
-	}
-	return strings.EqualFold(strings.TrimSpace(r.ReqName), strings.TrimSpace(u.FullName))
+	return r.CreatedByUserID != nil && claims != nil && *r.CreatedByUserID == claims.ID
 }
 
 func (h *RequestHandler) DeletedByID(c *gin.Context) {
