@@ -27,13 +27,18 @@ func NewRequestHandler(repo *repository.RequestRepository, userRepo *repository.
 func currentClaims(c *gin.Context) *utils.JWTClaims {
 	v, ok := c.Get("user")
 	if !ok {
+		fmt.Println("[currentClaims] key \"user\" tidak ada di context")
 		return nil
 	}
-	claims, ok := v.(*utils.JWTClaims)
-	if !ok {
+	switch t := v.(type) {
+	case *utils.JWTClaims:
+		return t
+	case utils.JWTClaims:
+		return &t
+	default:
+		fmt.Printf("[currentClaims] tipe tidak dikenal: %T\n", v)
 		return nil
 	}
-	return claims
 }
 
 // GET /api/requests
@@ -56,7 +61,10 @@ func (h *RequestHandler) GetAll(c *gin.Context) {
 	}
 
 	if page < 1 {
-		page = 20
+		page = 1
+	}
+	if limit < 1 {
+		limit = 20
 	}
 	if limit > 100 {
 		limit = 100

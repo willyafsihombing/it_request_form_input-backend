@@ -3,14 +3,15 @@ package handlers
 import (
 	"context"
 	"fmt"
+	"it-request-backend/pdf"
 	"it-request-backend/repository"
 	"it-request-backend/utils"
+	"log"
 	"os"
+	"regexp"
 	"strings"
 	"time"
 
-	"github.com/chromedp/cdproto/page"
-	"github.com/chromedp/chromedp"
 	"github.com/gin-gonic/gin"
 )
 
@@ -22,11 +23,40 @@ func NewPDFHandler(repo *repository.RequestRepository) *PDFHandler {
 	return &PDFHandler{Repo: repo}
 }
 
-func frontendBase() string {
-	if v := strings.TrimRight(os.Getenv("FRONTEND_URL"), "/"); v != "" {
+var pdfSlots = make(chan struct{}, 2)
+
+func printBase() string {
+	if v := strings.TrimRight(os.Getenv("PRINT_BASE_URL"), "/"); v != "" {
 		return v
 	}
 	return "http://localhost:3000"
+}
+
+var unsafeFileChars = regexp.MustCompile(`[^A-Za-z0-9._-]+`)
+
+func safeFileName(name string) string {
+	name = strings.Trim(unsafeFileChars.ReplaceAllString(name, "_"), "_")
+	if name == "" {
+		name = "IT-Request"
+	}
+	if len(name) > 120 {
+		name = name[:120]
+	}
+	return name + ".pdf"
+}
+
+var printOptions = map[string]string{
+	"landscape":         "true",
+	"paperWidth":        "11.69",
+	"paperHeight":       "8.27",
+	"marginTop":         "0",
+	"marginBottom":      "0",
+	"marginLeft":        "0",
+	"marginRight":       "0",
+	"printBackground":   "true",
+	"preferCssPageSize": "true",
+	"scale":             "1",
+	"waitForExpression": "!!document.querySelector('#print-area') && document.fonts.status === 'loaded'",
 }
 
 // GET /api/requests/:id/pdf
@@ -43,61 +73,26 @@ func (h *PDFHandler) GeneratePDF(c *gin.Context) {
 		return
 	}
 
-	fileName := fmt.Sprintf("%s.pdf", req.FormNumber) //->%s_%s
-
-	printURL := fmt.Sprintf("%s/dashboard/requests/%s/print", frontendBase(), id)
-
-	pdfBuf, err := generatePDFFromURL(printURL)
-	if err != nil {
-		utils.InternalError(c, "Gagal generate PDF: "+err.Error())
+	select {
+	case pdfSlots <- struct{}{}:
+		defer func() { <-pdfSlots }()
+	case <-c.Request.Context().Done():
 		return
 	}
 
-	c.Header("Content-Type", "application/pdf")
-	c.Header("Content-Disposition", fmt.Sprintf(`attachment; filename="%s"`, fileName))
-	c.Header("Content-Length", fmt.Sprintf("%d", len(pdfBuf)))
+	fileName := safeFileName(req.FormNumber)
+	printURL := fmt.Sprintf("%s/dashboard/requests/%s/print", printBase(), id)
 
-	c.Data(200, "application/pdf", pdfBuf)
-
-}
-
-func generatePDFFromURL(url string) ([]byte, error) {
-	opts := append(chromedp.DefaultExecAllocatorOptions[:],
-		chromedp.NoSandbox,
-		chromedp.Flag("disable-gpu", true),
-		chromedp.Flag("disable-dev-shm-usage", true),
-	)
-
-	allocCtx, cancelAlloc := chromedp.NewExecAllocator(context.Background(), opts...)
-	defer cancelAlloc()
-
-	ctx, cancel := chromedp.NewContext(allocCtx)
+	ctx, cancel := context.WithTimeout(c.Request.Context(), 45*time.Second)
 	defer cancel()
 
-	ctx, cancelTimeout := context.WithTimeout(ctx, 30*time.Second)
-	defer cancelTimeout()
+	pdfBuf, err := pdf.URLToPDF(ctx, printURL, printOptions)
+	if err != nil {
+		log.Printf("[PDF] gagal untuk %s: %v", id, err)
+		utils.InternalError(c, "Gagal membuat PDF, coba lagi")
+		return
+	}
 
-	var pdfBuf []byte
-
-	err := chromedp.Run(ctx,
-		chromedp.Navigate(url),
-		chromedp.WaitVisible(`#print-area`, chromedp.ByID),
-		chromedp.ActionFunc(func(ctx context.Context) error {
-			var err error
-			pdfBuf, _, err = page.PrintToPDF().
-				WithPrintBackground(true).
-				WithLandscape(true).
-				WithPaperWidth(11.69).
-				WithPaperHeight(8.27).
-				WithMarginTop(0.16).
-				WithMarginBottom(0.16).
-				WithMarginLeft(0.16).
-				WithMarginRight(0.16).
-				WithScale(0.9).
-				Do(ctx)
-			return err
-		}),
-	)
-
-	return pdfBuf, err
+	c.Header("Content-Disposition", fmt.Sprintf(`attachment; filename="%s"`, fileName))
+	c.Data(200, "application/pdf", pdfBuf)
 }

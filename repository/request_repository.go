@@ -124,6 +124,7 @@ func (r *RequestRepository) FindAll(status, priority, search string, page, limit
 func (r *RequestRepository) FindByID(id string) (*models.Request, error) {
 	var req models.Request
 	var deletedAt sql.NullTime
+	var createdBy sql.NullString
 
 	query := `
 		SELECT
@@ -143,7 +144,7 @@ func (r *RequestRepository) FindByID(id string) (*models.Request, error) {
 			sig_requester, sig_spt_dept, sig_dept_mgr, sig_sr_mgr,
 			sig_hoo, sig_it_admin, sig_msdi_mgr,
 			status, priority, it_notes, assigned_to,
-			deleted_at, created_at, updated_at
+			deleted_at, created_at, updated_at, created_by_user_id
 		FROM requests
 		WHERE id = $1 AND deleted_at IS NULL
 	`
@@ -165,7 +166,7 @@ func (r *RequestRepository) FindByID(id string) (*models.Request, error) {
 		&req.SigRequester, &req.SigSptDept, &req.SigDeptMgr, &req.SigSrMgr,
 		&req.SigHOO, &req.SigITAdmin, &req.SigMSDIMgr,
 		&req.Status, &req.Priority, &req.ItNotes, &req.AssignedTo,
-		&deletedAt, &req.CreatedAt, &req.UpdatedAt,
+		&deletedAt, &req.CreatedAt, &req.UpdatedAt, &createdBy,
 	)
 
 	if err == sql.ErrNoRows {
@@ -177,6 +178,10 @@ func (r *RequestRepository) FindByID(id string) (*models.Request, error) {
 
 	if deletedAt.Valid {
 		req.DeletedAt = &deletedAt.Time
+	}
+
+	if createdBy.Valid {
+		req.CreatedByUserID = &createdBy.String
 	}
 
 	return &req, nil
@@ -209,7 +214,7 @@ func (r *RequestRepository) Create(req *models.Request) error {
             tech_ad, tech_aw, tech_cr, tech_em, tech_ip, tech_ep,
             sig_requester, sig_spt_dept, sig_dept_mgr, sig_sr_mgr,
             sig_hoo, sig_it_admin, sig_msdi_mgr,
-            status, priority, created_at, updated_at
+            status, priority, created_at, updated_at, created_by_user_id
         ) VALUES (
             $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,
             $11,$12,$13,$14,$15,$16,$17,$18,$19,$20,
@@ -217,7 +222,7 @@ func (r *RequestRepository) Create(req *models.Request) error {
             $31,$32,$33,$34,$35,$36,$37,$38,$39,$40,
             $41,$42,$43,$44,$45,$46,$47,$48,$49,$50,
             $51,$52,$53,$54,$55,$56,$57,$58,$59,$60,
-            $61,$62,$63
+            $61,$62,$63,$64
         )
     `
 	now := time.Now()
@@ -235,7 +240,7 @@ func (r *RequestRepository) Create(req *models.Request) error {
 		req.TechAD, req.TechAW, req.TechCR, req.TechEM, req.TechIP, req.TechEP,
 		req.SigRequester, req.SigSptDept, req.SigDeptMgr, req.SigSrMgr,
 		req.SigHOO, req.SigITAdmin, req.SigMSDIMgr,
-		req.Status, req.Priority, now, now,
+		req.Status, req.Priority, now, now, req.CreatedByUserID,
 	)
 	return err
 }
