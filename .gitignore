@@ -1,0 +1,17 @@
+# Go
+bin/
+*.exe
+
+# Environment files
+.env
+.env.*
+!.env.example
+
+# VS Code
+.vscode/
+
+# Log
+*.log
+
+# Build
+dist/
