@@ -4,7 +4,8 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"uuid"
+
+	"github.com/google/uuid"
 )
 
 type EmployeeSyncRepository struct {

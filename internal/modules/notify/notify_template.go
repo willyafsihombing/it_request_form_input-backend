@@ -24,39 +24,131 @@ type mailData struct {
 }
 
 var mailTpl = template.Must(template.New("mail").Parse(`<!DOCTYPE html>
-<html><body style="margin:0;padding:0;background:#f1f5f9;font-family:Segoe UI,Arial,sans-serif;color:#0f172a;">
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f1f5f9;padding:24px 0;">
-<tr><td align="center">
-<table role="presentation" width="600" cellpadding="0" cellspacing="0" style="background:#ffffff;border:1px solid #e2e8f0;">
-  <tr><td style="padding:20px 28px;border-bottom:3px solid {{.Accent}};">
-    <div style="font-size:12px;color:#64748b;">ITR Platform · PT. Unggul Dinamika Utama</div>
-    <div style="font-size:20px;font-weight:bold;color:{{.Accent}};margin-top:4px;">{{.Heading}}</div>
-  </td></tr>
-  <tr><td style="padding:24px 28px;font-size:14px;line-height:1.6;">
-    <p style="margin:0 0 12px;">{{.Greeting}}</p>
-    <p style="margin:0 0 16px;">{{.Intro}}</p>
-    <table role="presentation" cellpadding="6" cellspacing="0" style="font-size:13px;border-collapse:collapse;width:100%;">
-      <tr><td style="color:#64748b;width:150px;border-bottom:1px solid #f1f5f9;">No. Form</td><td style="border-bottom:1px solid #f1f5f9;"><b>{{.FormNumber}}</b></td></tr>
-      <tr><td style="color:#64748b;border-bottom:1px solid #f1f5f9;">Judul</td><td style="border-bottom:1px solid #f1f5f9;">{{.Title}}</td></tr>
-      <tr><td style="color:#64748b;border-bottom:1px solid #f1f5f9;">Pemohon</td><td style="border-bottom:1px solid #f1f5f9;">{{.Requester}}</td></tr>
-      {{if .Department}}<tr><td style="color:#64748b;border-bottom:1px solid #f1f5f9;">Departemen</td><td style="border-bottom:1px solid #f1f5f9;">{{.Department}}</td></tr>{{end}}
-      {{if .StepLabel}}<tr><td style="color:#64748b;border-bottom:1px solid #f1f5f9;">Langkah</td><td style="border-bottom:1px solid #f1f5f9;">{{.StepLabel}}</td></tr>{{end}}
-      {{if .ActedBy}}<tr><td style="color:#64748b;border-bottom:1px solid #f1f5f9;">Oleh</td><td style="border-bottom:1px solid #f1f5f9;">{{.ActedBy}}</td></tr>{{end}}
-    </table>
-    {{if .Note}}<div style="margin-top:16px;padding:10px 14px;background:#f8fafc;border-left:3px solid {{.Accent}};font-size:13px;">
-      <div style="color:#64748b;font-size:12px;">{{.NoteLabel}}</div><div style="white-space:pre-line;">{{.Note}}</div></div>{{end}}
-    <table role="presentation" cellpadding="0" cellspacing="0" style="margin-top:24px;"><tr>
-      <td style="background:{{.Accent}};border-radius:4px;">
-        <a href="{{.URL}}" style="display:inline-block;padding:10px 22px;color:#ffffff;text-decoration:none;font-weight:bold;font-size:14px;">{{.ButtonText}}</a>
-      </td></tr></table>
-    <p style="margin:16px 0 0;font-size:12px;color:#64748b;">Jika tombol tidak berfungsi, salin tautan ini ke browser:<br>{{.URL}}</p>
-  </td></tr>
-  <tr><td style="padding:14px 28px;background:#f8fafc;font-size:11px;color:#94a3b8;">
-    Email ini dikirim otomatis oleh sistem, mohon tidak membalas. Tautan hanya bisa dibuka dari jaringan kantor atau VPN.
-  </td></tr>
-</table>
-</td></tr></table>
-</body></html>`))
+<html lang="id">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light only">
+  <title>{{.Heading}}</title>
+</head>
+<body style="margin:0;padding:0;background-color:#f1f5f9;">
+  <div style="display:none;max-height:0;overflow:hidden;opacity:0;font-size:1px;line-height:1px;color:#f1f5f9;">
+    {{.FormNumber}} – {{.Title}}
+  </div>
+
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="#f1f5f9">
+    <tr>
+      <td align="center" style="padding:32px 16px;">
+
+        <table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0"
+               style="width:100%;max-width:600px;background-color:#ffffff;border-radius:12px;border:1px solid #e2e8f0;">
+
+          <tr>
+            <td height="5" bgcolor="{{.Accent}}" style="height:5px;line-height:5px;font-size:0;background-color:{{.Accent}};border-radius:12px 12px 0 0;">&nbsp;</td>
+          </tr>
+
+          <tr>
+            <td style="padding:28px 36px 8px 36px;font-family:'Segoe UI',Arial,Helvetica,sans-serif;">
+              <div style="font-size:12px;letter-spacing:1px;text-transform:uppercase;color:#64748b;font-weight:600;">
+                ITR Platform · PT. Unggul Dinamika Utama
+              </div>
+              <h1 style="margin:10px 0 0 0;font-size:24px;line-height:1.3;color:#0f172a;font-weight:700;">
+                {{.Heading}}
+              </h1>
+            </td>
+          </tr>
+
+          <tr>
+            <td style="padding:16px 36px 8px 36px;font-family:'Segoe UI',Arial,Helvetica,sans-serif;font-size:15px;line-height:1.65;color:#334155;">
+              <p style="margin:0 0 12px 0;"><strong style="color:#0f172a;">{{.Greeting}}</strong></p>
+              <p style="margin:0;">{{.Intro}}</p>
+            </td>
+          </tr>
+
+          <tr>
+            <td style="padding:20px 36px 8px 36px;">
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"
+                     style="background-color:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;">
+                <tr>
+                  <td style="padding:6px 20px;font-family:'Segoe UI',Arial,Helvetica,sans-serif;">
+                    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+                      <tr>
+                        <td width="110" valign="top" style="padding:11px 0;font-size:13px;color:#64748b;border-bottom:1px solid #e2e8f0;">No. Form</td>
+                        <td valign="top" style="padding:11px 0;font-size:14px;color:#0f172a;font-weight:700;border-bottom:1px solid #e2e8f0;">{{.FormNumber}}</td>
+                      </tr>
+                      <tr>
+                        <td valign="top" style="padding:11px 0;font-size:13px;color:#64748b;border-bottom:1px solid #e2e8f0;">Judul</td>
+                        <td valign="top" style="padding:11px 0;font-size:14px;color:#0f172a;border-bottom:1px solid #e2e8f0;">{{.Title}}</td>
+                      </tr>
+                      <tr>
+                        <td valign="top" style="padding:11px 0;font-size:13px;color:#64748b;border-bottom:1px solid #e2e8f0;">Pemohon</td>
+                        <td valign="top" style="padding:11px 0;font-size:14px;color:#0f172a;border-bottom:1px solid #e2e8f0;">{{.Requester}}</td>
+                      </tr>
+                      <tr>
+                        <td valign="top" style="padding:11px 0;font-size:13px;color:#64748b;border-bottom:1px solid #e2e8f0;">Departemen</td>
+                        <td valign="top" style="padding:11px 0;font-size:14px;color:#0f172a;border-bottom:1px solid #e2e8f0;">{{.Department}}</td>
+                      </tr>
+                      <tr>
+                        <td valign="top" style="padding:11px 0;font-size:13px;color:#64748b;{{if or .ActedBy .Note}}border-bottom:1px solid #e2e8f0;{{end}}">Langkah</td>
+                        <td valign="top" style="padding:11px 0;font-size:14px;{{if or .ActedBy .Note}}border-bottom:1px solid #e2e8f0;{{end}}">
+                          <span style="display:inline-block;padding:3px 10px;background-color:#e2e8f0;color:#334155;border-radius:999px;font-size:12px;font-weight:700;">{{.StepLabel}}</span>
+                        </td>
+                      </tr>
+                      {{if .ActedBy}}
+                      <tr>
+                        <td valign="top" style="padding:11px 0;font-size:13px;color:#64748b;{{if .Note}}border-bottom:1px solid #e2e8f0;{{end}}">Oleh</td>
+                        <td valign="top" style="padding:11px 0;font-size:14px;color:#0f172a;{{if .Note}}border-bottom:1px solid #e2e8f0;{{end}}">{{.ActedBy}}</td>
+                      </tr>
+                      {{end}}
+                      {{if .Note}}
+                      <tr>
+                        <td valign="top" style="padding:11px 0;font-size:13px;color:#64748b;">{{.NoteLabel}}</td>
+                        <td valign="top" style="padding:11px 0;font-size:14px;color:#0f172a;white-space:pre-wrap;">{{.Note}}</td>
+                      </tr>
+                      {{end}}
+                    </table>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+          <tr>
+            <td align="left" style="padding:24px 36px 8px 36px;">
+              <table role="presentation" cellpadding="0" cellspacing="0" border="0">
+                <tr>
+                  <td align="center" bgcolor="{{.Accent}}" style="background-color:{{.Accent}};border-radius:8px;">
+                    <a href="{{.URL}}" target="_blank"
+                       style="display:inline-block;padding:14px 32px;font-family:'Segoe UI',Arial,Helvetica,sans-serif;font-size:15px;font-weight:700;line-height:1;color:#ffffff !important;text-decoration:none;border-radius:8px;">
+                      <font color="#ffffff"><span style="color:#ffffff;">{{.ButtonText}} &rarr;</span></font>
+                    </a>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+          <tr>
+            <td style="padding:16px 36px 28px 36px;font-family:'Segoe UI',Arial,Helvetica,sans-serif;font-size:12px;line-height:1.6;color:#64748b;">
+              Jika tombol tidak berfungsi, salin tautan ini ke browser:<br>
+              <a href="{{.URL}}" style="color:#0369a1;word-break:break-all;text-decoration:underline;">{{.URL}}</a>
+            </td>
+          </tr>
+
+          <tr>
+            <td style="padding:18px 36px;background-color:#f8fafc;border-top:1px solid #e2e8f0;border-radius:0 0 12px 12px;font-family:'Segoe UI',Arial,Helvetica,sans-serif;font-size:12px;line-height:1.6;color:#94a3b8;">
+              Email ini dikirim otomatis oleh sistem, mohon tidak membalas.
+              Tautan hanya bisa dibuka dari jaringan kantor atau VPN.
+            </td>
+          </tr>
+
+        </table>
+
+      </td>
+    </tr>
+  </table>
+</body>
+</html>`))
 
 func render(d mailData) (string, error) {
 	var buf bytes.Buffer

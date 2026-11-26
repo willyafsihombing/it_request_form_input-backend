@@ -1,17 +1,24 @@
-# Go
+# Go build output
 bin/
+dist/
 *.exe
+/server
+*.test
+*.out
+coverage.*
 
-# Environment files
+# Environment files (rahasia)
 .env
 .env.*
 !.env.example
 
-# VS Code
-.vscode/
-
-# Log
+# Upload / data lokal
+uploads/
+tmp/
 *.log
 
-# Build
-dist/
+# Editor & OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db

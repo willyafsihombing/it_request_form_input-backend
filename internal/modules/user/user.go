@@ -36,4 +36,5 @@ type UserResponse struct {
 	DeletedAt          *time.Time         `json:"deletedAt,omitempty"`
 	CreatedAt          time.Time          `json:"createdAt"`
 	UpdatedAt          time.Time          `json:"updatedAt"`
+	CanCreateRequest   bool               `json:"CanCreateRequest"`
 }

@@ -4,6 +4,8 @@ import (
 	"context"
 	"database/sql"
 	"log"
+	"os"
+	"strings"
 
 	"it-request-backend/internal/middleware"
 	"it-request-backend/internal/modules/account"
@@ -21,12 +23,27 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+func allowedOrigins() []string {
+	raw := os.Getenv("CORS_ORIGINS")
+	if raw == "" {
+		return []string{"http://localhost:3030", "http://localhost:3000"}
+	}
+	var origins []string
+	for _, o := range strings.Split(raw, ",") {
+		o = strings.TrimRight(strings.TrimSpace(o), "/")
+		if o != "" {
+			origins = append(origins, o)
+		}
+	}
+	return origins
+}
+
 func Setup(db *sql.DB, syncH *onedbsync.EmployeeSyncHandler) *gin.Engine {
 	r := gin.Default()
 	r.SetTrustedProxies(nil)
 
 	r.Use(cors.New(cors.Config{
-		AllowOrigins:     []string{"http://localhost:3030", "http://host.docker.internal:3030"},
+		AllowOrigins:     allowedOrigins(),
 		AllowMethods:     []string{"GET", "POST", "PATCH", "DELETE", "OPTIONS", "PUT"},
 		AllowHeaders:     []string{"Origin", "Content-Type", "Authorization", "Cache-Control", "Pragma"},
 		ExposeHeaders:    []string{"Content-Disposition", "Content-Length", "Content-Type"},
@@ -108,7 +125,7 @@ func Setup(db *sql.DB, syncH *onedbsync.EmployeeSyncHandler) *gin.Engine {
 		requests := api.Group("/requests", authed()...)
 		{
 			requests.GET("", requestHandler.GetAll)
-			requests.POST("", sigHandler.SignAfter, requestHandler.Create)
+			requests.POST("", middleware.BlockCreateByLevel(db), sigHandler.SignAfter, requestHandler.Create)
 			requests.PATCH("/:id", requestHandler.UpdateByID)
 			requests.DELETE("/:id", requestHandler.DeletedByID)
 			requests.PUT("/:id/resubmit", sigHandler.SignAfter, requestHandler.Resubmit)

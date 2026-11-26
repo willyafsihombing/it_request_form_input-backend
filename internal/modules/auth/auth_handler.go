@@ -62,6 +62,10 @@ func (h *AuthHandler) loadEmployee(user *user.User) (*employee.Employee, error) 
 }
 
 func newUserResponse(u *user.User, emp *employee.Employee) user.UserResponse {
+	canCreate := true
+	if emp != nil {
+		canCreate = !utils.IsCreateBlockedLevel(emp.Level)
+	}
 	return user.UserResponse{
 		ID:                 u.ID,
 		EmailAddrs:         u.EmailAddrs,
@@ -73,6 +77,7 @@ func newUserResponse(u *user.User, emp *employee.Employee) user.UserResponse {
 		EmployeeID:         u.EmployeeID,
 		MustChangePassword: u.MustChangePassword,
 		Employee:           emp,
+		CanCreateRequest:   canCreate,
 		CreatedAt:          u.CreatedAt,
 		UpdatedAt:          u.UpdatedAt,
 	}
